@@ -3,25 +3,93 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #e8f4fc;
+  --bg-card: #ffffff;
+  --cyan: #0091c7;
+  --purple: #7c3aed;
+  --success: #059669;
+  --error: #dc2626;
+  --text: #0b1220;
+  --text-muted: #4a5f78;
+  --glow: rgba(0, 145, 199, 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply min-h-screen antialiased;
+  background: var(--bg);
+  color: var(--text);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Light hero mesh */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(0, 145, 199, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, black 25%, transparent 72%);
+  animation: grid-drift 48s linear infinite;
+}
+
+@keyframes grid-drift {
+  0% {
+    background-position: 0 0, 0 0;
   }
+  100% {
+    background-position: 40px 40px, 40px 40px;
+  }
+}
+
+.glass {
+  @apply rounded-2xl border border-tmt-border/80 backdrop-blur-xl;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(147, 197, 232, 0.35),
+    0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.glow-border {
+  box-shadow:
+    0 0 0 1px rgba(0, 145, 199, 0.45),
+    0 4px 20px rgba(0, 145, 199, 0.2);
+}
+
+.glow-border-purple {
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.45),
+    0 4px 22px rgba(124, 58, 237, 0.18);
+}
+
+.btn-glow {
+  @apply relative overflow-hidden rounded-xl px-6 py-3 font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, #0091c7, #7c3aed);
+  border: 1px solid rgba(0, 145, 199, 0.35);
+  color: #ffffff;
+}
+
+.btn-glow:hover {
+  box-shadow:
+    0 0 24px rgba(0, 145, 199, 0.45),
+    0 8px 28px rgba(124, 58, 237, 0.25);
+  transform: translateY(-1px);
+}
+
+.option-card {
+  @apply cursor-pointer rounded-xl border border-tmt-border/90 p-4 transition-all duration-300;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.option-card:hover {
+  border-color: rgba(0, 145, 199, 0.55);
+  box-shadow: 0 4px 18px rgba(0, 145, 199, 0.12);
+}
+
+.option-card-selected {
+  border-color: rgba(0, 145, 199, 0.95) !important;
+  box-shadow:
+    0 0 0 2px rgba(0, 145, 199, 0.35),
+    0 6px 24px rgba(124, 58, 237, 0.15);
 }

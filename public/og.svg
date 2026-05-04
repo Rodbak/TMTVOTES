@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A0E1A"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00D4FF"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="80" y="220" fill="#F9FAFB" font-family="system-ui, sans-serif" font-size="72" font-weight="700">TMT Votes</text>
+  <text x="80" y="310" fill="url(#glow)" font-family="system-ui, sans-serif" font-size="42" font-weight="600">Your voice. Your vote.</text>
+  <text x="80" y="400" fill="#9CA3AF" font-family="system-ui, sans-serif" font-size="28">Public voting · Admin dashboard · PostgreSQL</text>
+</svg>
