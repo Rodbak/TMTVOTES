@@ -1,46 +1,41 @@
+"use client";
+
 import Link from "next/link";
-import type { Topic, Option } from "@prisma/client";
-import { Countdown } from "./countdown";
+import type { Topic } from "./topics-store";
 
-type T = Topic & { options: Option[] };
-
-export function TopicCard({ topic, variant }: { topic: T; variant: "active" | "closed" }) {
-  const total = topic.options.reduce((s, o) => s + o.voteCount, 0);
-  const href = variant === "active" ? `/vote/${topic.id}` : `/results/${topic.id}`;
+export function TopicCard({ topic }: { topic: Topic }) {
+  const closed = topic.status === "closed";
+  const total = topic.votes.reduce((a, b) => a + b, 0);
 
   return (
-    <article className="glass group relative flex flex-col overflow-hidden rounded-2xl p-6 transition-transform duration-300 hover:-translate-y-1">
-      {topic.featured && (
-        <span className="absolute right-4 top-4 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-tmt-purple ring-1 ring-tmt-purple/25">
-          Featured
-        </span>
-      )}
-      <h3 className="font-display text-xl font-bold text-tmt-text group-hover:text-tmt-cyan transition-colors">
-        {topic.title}
-      </h3>
-      <p className="mt-2 line-clamp-2 text-sm text-tmt-muted">{topic.description}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-tmt-muted">
-        <span>
-          <strong className="text-tmt-text">{total}</strong> votes
-        </span>
-        {topic.endDate && variant === "active" ? (
-          <span>
-            Ends in <Countdown end={topic.endDate} />
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-6">
-        <Link
-          href={href}
-          className={
-            variant === "active"
-              ? "btn-glow inline-flex w-full items-center justify-center text-center animate-pulse-glow"
-              : "inline-flex w-full items-center justify-center rounded-xl border-2 border-tmt-border bg-white/80 py-3 text-sm font-semibold text-tmt-muted transition-all hover:border-tmt-cyan hover:text-tmt-cyan"
-          }
+    <Link
+      href={`/vote/${topic.id}`}
+      className="group relative block overflow-hidden rounded-[14px] border border-line bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-primary-mid hover:shadow-cardHover"
+    >
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary to-accent opacity-0 transition-opacity group-hover:opacity-100" />
+      <span
+        className={`mb-2.5 inline-block rounded-full border px-2.5 py-[3px] text-[10px] font-bold tracking-wider ${
+          closed
+            ? "border-line bg-[#F3F4F6] text-ink-soft"
+            : "border-ok-border bg-ok-light text-ok"
+        }`}
+      >
+        {closed ? "CLOSED" : "ACTIVE"}
+      </span>
+      <h3 className="mb-1.5 text-[15px] font-bold leading-tight text-ink">{topic.title}</h3>
+      <p className="mb-3 text-[13px] leading-relaxed text-ink-muted">{topic.desc}</p>
+      <div className="flex items-center justify-between text-[12px] text-ink-soft">
+        <span>{total} votes</span>
+        <span
+          className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition ${
+            closed
+              ? "border border-line bg-transparent text-ink-muted group-hover:border-primary group-hover:bg-primary-light group-hover:text-primary"
+              : "bg-primary text-white group-hover:bg-primary-dark"
+          }`}
         >
-          {variant === "active" ? "Vote Now" : "View results"}
-        </Link>
+          {closed ? "View results" : "Vote now →"}
+        </span>
       </div>
-    </article>
+    </Link>
   );
 }

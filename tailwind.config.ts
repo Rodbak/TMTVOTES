@@ -1,45 +1,45 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
-        tmt: {
-          bg: "#E8F4FC",
-          surface: "#FFFFFF",
-          card: "#F1F7FC",
-          surfaceMuted: "#D8EEF9",
-          border: "#93C5E8",
-          cyan: "#0091C7",
-          purple: "#7C3AED",
-          success: "#059669",
-          error: "#DC2626",
-          text: "#0B1220",
-          muted: "#4A5F78",
+        bg: "#F5F7FF",
+        bg2: "#EEF1FF",
+        primary: {
+          DEFAULT: "#4F46E5",
+          dark: "#4338CA",
+          light: "#EEF2FF",
+          mid: "#818CF8",
         },
+        accent: {
+          DEFAULT: "#06B6D4",
+          light: "#ECFEFF",
+        },
+        ok: { DEFAULT: "#059669", light: "#D1FAE5", border: "#A7F3D0" },
+        bad: { DEFAULT: "#DC2626", light: "#FEE2E2", border: "#FECACA" },
+        warn: { DEFAULT: "#D97706", light: "#FEF3C7" },
+        ink: { DEFAULT: "#111827", muted: "#4B5563", soft: "#9CA3AF" },
+        line: { DEFAULT: "#E5E7EB", primary: "#C7D2FE" },
       },
       fontFamily: {
-        display: ["var(--font-space)", "system-ui", "sans-serif"],
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-jakarta)", "ui-sans-serif", "system-ui"],
+      },
+      boxShadow: {
+        card: "0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)",
+        cardHover: "0 4px 16px rgba(79,70,229,0.12)",
       },
       keyframes: {
-        pulseGlow: {
-          "0%, 100%": { boxShadow: "0 0 12px rgba(0,145,199,0.35)" },
-          "50%": { boxShadow: "0 0 28px rgba(124,58,237,0.45)" },
-        },
-        barGrow: {
-          "0%": { transform: "scaleX(0)" },
-          "100%": { transform: "scaleX(1)" },
+        blink: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.2" } },
+        fall: {
+          "0%": { transform: "translateY(-10px) rotate(0deg)", opacity: "1" },
+          "100%": { transform: "translateY(100vh) rotate(540deg)", opacity: "0" },
         },
       },
       animation: {
-        "pulse-glow": "pulseGlow 2.2s ease-in-out infinite",
-        "bar-grow": "barGrow 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        blink: "blink 1.8s infinite",
+        fall: "fall 2.5s ease-in forwards",
       },
     },
   },
