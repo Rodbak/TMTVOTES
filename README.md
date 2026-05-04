@@ -102,6 +102,8 @@ Restart `npm run dev` after Postgres is up. If something else breaks, check the 
 
 ## Deploy (typical: Vercel + managed Postgres)
 
+On Vercel / Netlify / Render, **`DATABASE_URL` must not use `localhost`** — use your host’s Postgres URL, or leave `DATABASE_URL` unset / set `NEXT_PUBLIC_PRESENTATION_MODE=1` for the mock UI. Otherwise you will see **500 / Internal Server Error** (the cloud cannot reach your PC’s `localhost:5432`).
+
 1. Create a **Postgres** database (Neon, Supabase, Railway, etc.) and set `DATABASE_URL` in the host’s environment.
 2. Set `JWT_SECRET`, `VOTER_ID_PEPPER`, and `NEXT_PUBLIC_APP_URL` to your production domain.
 3. Run migrations or schema sync as part of deploy (e.g. build command including `prisma db push` or `prisma migrate deploy`, depending on whether you use migrations in production).
