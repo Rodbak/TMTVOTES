@@ -47,6 +47,9 @@ Locally: copy `.env.example` to `.env` and fill in. On Vercel: **Project → Set
 | `ADMIN_USERNAME` | seed only | Used by `db:seed` to create the first admin |
 | `ADMIN_PASSWORD` | seed only | Strong password before going live |
 | `ADMIN_DISPLAY_NAME` | seed only | Optional |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | optional | Cloudflare Turnstile CAPTCHA — both must be set to enable the human-check on `/api/vote`. Skipping them is safe; the form just won’t show the widget. |
+| `NEXT_PUBLIC_SENTRY_DSN` (and/or `SENTRY_DSN`) | optional | Enable Sentry error monitoring. Without it the SDK is a no-op. |
+| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | optional | Source-map upload during Vercel builds. Skip if you only want runtime error capture. |
 
 ### 3. Apply the schema
 

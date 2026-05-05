@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Confetti } from "@/components/confetti";
 import { CountUp } from "@/components/count-up";
+import {
+  TurnstileWidget,
+  isTurnstileEnabled,
+} from "@/components/turnstile-widget";
 import { useTopics } from "@/components/topics-store";
 
 type IdType = "email" | "phone";
@@ -38,6 +42,8 @@ function VotePageInner() {
   const [justVoted, setJustVoted] = useState(false);
   const [confetti, setConfetti] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRequired = isTurnstileEnabled();
 
   useEffect(() => {
     if (!topic) return;
@@ -103,13 +109,23 @@ function VotePageInner() {
       setError("Please enter a valid phone number.");
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the human-check before voting.");
+      return;
+    }
     setError("");
     if (hasVoted(topic.id)) {
       setShowResults(true);
       return;
     }
     setSubmitting(true);
-    const outcome = await vote(topic.id, selected, value, idType.toUpperCase() as "EMAIL" | "PHONE");
+    const outcome = await vote(
+      topic.id,
+      selected,
+      value,
+      idType.toUpperCase() as "EMAIL" | "PHONE",
+      turnstileToken || undefined,
+    );
     setSubmitting(false);
     if (!outcome.ok) {
       if (outcome.error === "already_voted") {
@@ -124,7 +140,9 @@ function VotePageInner() {
         outcome.message ||
           (outcome.error === "network"
             ? "Network error — try again."
-            : "Could not record your vote."),
+            : outcome.error === "captcha_failed"
+              ? "Human-check failed. Refresh and try again."
+              : "Could not record your vote."),
       );
       return;
     }
@@ -180,6 +198,12 @@ function VotePageInner() {
             error={error}
             onCast={castVote}
             submitting={submitting}
+            turnstileSlot={
+              <TurnstileWidget
+                onSuccess={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+              />
+            }
           />
         ) : (
           <ResultsView
@@ -275,6 +299,7 @@ function VoteForm({
   error,
   onCast,
   submitting,
+  turnstileSlot,
 }: {
   options: string[];
   votes: number[];
@@ -288,6 +313,7 @@ function VoteForm({
   error: string;
   onCast: () => void;
   submitting: boolean;
+  turnstileSlot?: React.ReactNode;
 }) {
   return (
     <div className="mt-5">
@@ -353,6 +379,8 @@ function VoteForm({
         onChange={(e) => onIdentifier(e.target.value)}
         autoComplete={idType === "email" ? "email" : "tel"}
       />
+
+      {turnstileSlot}
 
       {error ? <p className="mb-2 text-[12px] text-bad">{error}</p> : null}
 

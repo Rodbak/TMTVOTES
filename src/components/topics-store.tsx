@@ -60,7 +60,16 @@ const SEED_TOPICS: Topic[] = [
 
 type VoteOutcome =
   | { ok: true }
-  | { ok: false; error: "already_voted" | "voting_closed" | "network" | "validation"; message?: string };
+  | {
+      ok: false;
+      error:
+        | "already_voted"
+        | "voting_closed"
+        | "network"
+        | "validation"
+        | "captcha_failed";
+      message?: string;
+    };
 
 type Ctx = {
   topics: Topic[];
@@ -74,6 +83,7 @@ type Ctx = {
     optionIndex: number,
     identifier: string,
     identifierType: "EMAIL" | "PHONE",
+    turnstileToken?: string,
   ) => Promise<VoteOutcome>;
   hasVoted: (topicId: Topic["id"]) => boolean;
   toggleStatus: (topicId: Topic["id"]) => Promise<void>;
@@ -199,6 +209,7 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
       optionIndex: number,
       identifier: string,
       identifierType: "EMAIL" | "PHONE",
+      turnstileToken?: string,
     ): Promise<VoteOutcome> => {
       if (HAS_BACKEND) {
         const topic = topics.find((t) => t.id === topicId);
@@ -215,6 +226,7 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
               optionId,
               identifier,
               identifierType,
+              turnstileToken,
             }),
           });
           if (res.status === 409) {
@@ -223,9 +235,15 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
           }
           if (res.status === 400) {
             const data = await res.json().catch(() => ({}));
+            const err = data?.error;
             return {
               ok: false,
-              error: data?.error === "voting_closed" ? "voting_closed" : "validation",
+              error:
+                err === "voting_closed"
+                  ? "voting_closed"
+                  : err === "captcha_failed"
+                    ? "captcha_failed"
+                    : "validation",
               message: data?.message,
             };
           }

@@ -5,6 +5,7 @@ export const voteBodySchema = z.object({
   optionId: z.string().min(1),
   identifier: z.string().min(1).max(200).trim(),
   identifierType: z.enum(["EMAIL", "PHONE"]),
+  turnstileToken: z.string().optional(),
 });
 
 export const loginBodySchema = z.object({

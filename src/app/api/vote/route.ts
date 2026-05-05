@@ -7,6 +7,7 @@ import { hashIp, hashVoterIdentifier } from "@/lib/voter-hash";
 import { rateLimit } from "@/lib/rate-limit";
 import { assertSameOrigin, clientIp } from "@/lib/request-utils";
 import { getPublicTopic, topicIsOpenForVoting } from "@/lib/topics-service";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 
@@ -43,7 +44,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { topicId, optionId, identifier, identifierType } = parsed.data;
+  const { topicId, optionId, identifier, identifierType, turnstileToken } =
+    parsed.data;
+
+  const turnstile = await verifyTurnstile(turnstileToken, ip);
+  if (!turnstile.ok) {
+    return NextResponse.json(
+      {
+        error: "captcha_failed",
+        message:
+          turnstile.reason === "missing_token"
+            ? "Please complete the human-check before voting."
+            : "Captcha verification failed. Refresh and try again.",
+      },
+      { status: 400 },
+    );
+  }
 
   const fullTopic = await prisma.topic.findUnique({
     where: { id: topicId },
