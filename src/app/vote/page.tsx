@@ -1,21 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Confetti } from "@/components/confetti";
 import { useTopics } from "@/components/topics-store";
 
 type IdType = "email" | "phone";
 
 export default function VotePage() {
+  return (
+    <Suspense fallback={<VoteSkeleton />}>
+      <VotePageInner />
+    </Suspense>
+  );
+}
+
+function VotePageInner() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const topicId = Number(params?.id);
+  const searchParams = useSearchParams();
+  const idParam = searchParams?.get("id") ?? "";
+  const topicId = Number(idParam);
   const { topics, hasVoted, vote } = useTopics();
 
   const topic = useMemo(
-    () => topics.find((t) => t.id === topicId) ?? null,
+    () => (Number.isFinite(topicId) ? topics.find((t) => t.id === topicId) ?? null : null),
     [topics, topicId],
   );
 
@@ -128,6 +137,15 @@ export default function VotePage() {
           />
         )}
       </div>
+    </main>
+  );
+}
+
+function VoteSkeleton() {
+  return (
+    <main className="mx-auto max-w-[580px] px-6 py-10">
+      <div className="h-4 w-24 rounded bg-line/60" />
+      <div className="mt-6 h-44 rounded-2xl border border-line bg-white" />
     </main>
   );
 }

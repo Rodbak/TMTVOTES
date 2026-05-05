@@ -9,7 +9,7 @@ export function TopicCard({ topic }: { topic: Topic }) {
 
   return (
     <Link
-      href={`/vote/${topic.id}`}
+      href={`/vote?id=${topic.id}`}
       className="group relative block overflow-hidden rounded-[14px] border border-line bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-primary-mid hover:shadow-cardHover"
     >
       <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary to-accent opacity-0 transition-opacity group-hover:opacity-100" />
