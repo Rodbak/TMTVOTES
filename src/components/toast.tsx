@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-type ToastState = { msg: string; tone: "default" | "error" } | null;
+type ToastState = { msg: string; tone: "default" | "error"; key: number } | null;
 
 type Ctx = { toast: (msg: string, opts?: { error?: boolean }) => void };
 
@@ -18,20 +18,29 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const toast = useCallback((msg: string, opts?: { error?: boolean }) => {
-    setState({ msg, tone: opts?.error ? "error" : "default" });
+    setState({ msg, tone: opts?.error ? "error" : "default", key: Date.now() });
   }, []);
 
   return (
     <ToastCtx.Provider value={{ toast }}>
       {children}
-      <div
-        aria-live="polite"
-        className={`fixed left-1/2 bottom-5 z-[9999] -translate-x-1/2 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-medium text-white shadow-card transition-transform duration-300 ${
-          state ? "translate-y-0" : "translate-y-16"
-        } ${state?.tone === "error" ? "bg-bad" : "bg-ink"}`}
-      >
-        {state?.msg ?? ""}
-      </div>
+      {state ? (
+        <div
+          aria-live="polite"
+          key={state.key}
+          className={`fixed left-1/2 bottom-6 z-[9999] flex animate-toast-in items-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-medium text-white shadow-cardHover ${
+            state.tone === "error" ? "bg-bad" : "bg-ink"
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 rounded-full ${
+              state.tone === "error" ? "bg-white" : "bg-accent"
+            }`}
+          />
+          {state.msg}
+        </div>
+      ) : null}
     </ToastCtx.Provider>
   );
 }

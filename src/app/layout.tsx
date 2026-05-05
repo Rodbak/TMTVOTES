@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 import { ToastProvider } from "@/components/toast";
 import { TopicsProvider } from "@/components/topics-store";
 import "./globals.css";
@@ -23,11 +24,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={jakarta.variable}>
-      <body className="font-sans bg-bg text-ink min-h-screen">
+      <body className="font-sans bg-bg text-ink min-h-screen flex flex-col">
         <TopicsProvider>
           <ToastProvider>
             <Nav />
-            {children}
+            <div className="flex-1">{children}</div>
+            <Footer />
           </ToastProvider>
         </TopicsProvider>
       </body>

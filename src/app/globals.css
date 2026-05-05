@@ -10,8 +10,78 @@ body {
   @apply min-h-screen bg-bg text-ink antialiased;
 }
 
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22);
+  border-radius: 8px;
+}
+
+/* Layered hero background */
+.hero-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(620px 320px at 18% 18%, rgba(79, 70, 229, 0.18), transparent 60%),
+    radial-gradient(520px 320px at 82% 82%, rgba(6, 182, 212, 0.18), transparent 60%);
+  filter: blur(0.5px);
+}
+
 .hero-dots {
-  background-image: radial-gradient(#e0e7ff 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-  opacity: 0.7;
+  background-image: radial-gradient(#c7d2fe 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, black 30%, transparent 80%);
+}
+
+.hero-glow {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.hero-glow.left {
+  left: -180px;
+  top: -160px;
+  background: #818cf8;
+}
+
+.hero-glow.right {
+  right: -180px;
+  bottom: -160px;
+  background: #06b6d4;
+}
+
+/* Stagger helper: container sets --stagger-step, each child reads --i */
+.stagger > * {
+  animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes riseIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Bar fill for the live preview / results — reads --w */
+.bar-anim {
+  width: 0%;
+  animation: barFill 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@keyframes barFill {
+  to {
+    width: var(--w, 0%);
+  }
 }
