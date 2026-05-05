@@ -1,10 +1,15 @@
-# TMT Votes — Frontend Demo
+# TMT Votes
 
-A **frontend-only** public voting demo built with **Next.js 14 (App Router)**, **TypeScript**, and **Tailwind CSS**. Designed for stakeholder presentations and design walkthroughs — **no backend, no database, no API keys**.
+Public voting app — Next.js 14 (App Router) · Prisma · PostgreSQL · TypeScript · Tailwind CSS.
 
-- Pick a topic, vote with email or phone, and see live results with confetti.
-- An **Admin** area (client-side) lets you create, open / close, and delete topics on the fly.
-- All state lives in the browser via React context + `localStorage`, so reloads keep your demo intact.
+The site has **two modes**, controlled by a single env flag:
+
+| Mode | When | Storage |
+|------|------|---------|
+| **Demo** *(default)* | `NEXT_PUBLIC_HAS_BACKEND` not `1` | `localStorage` per browser. No DB, no API. Great for quick previews. |
+| **Live** | `NEXT_PUBLIC_HAS_BACKEND=1` | Postgres via Prisma + Next API routes. Shared votes, real admin login. |
+
+You can ship the demo on Vercel today, then flip the flag once Postgres is wired in.
 
 ---
 
@@ -15,40 +20,98 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-- **Home:** Active and closed topic grid
-- **Vote / Results:** `/vote/[id]`
-- **Admin:** `/admin` (demo credentials: `admin` / `tmt2024`)
-
-To reset all topics back to seed data, clear local storage for the site (DevTools → Application → Local Storage → delete `tmt.*` keys) and refresh.
+Open [http://localhost:3000](http://localhost:3000). With no `.env` you get the demo mode.
 
 ---
 
-## Build for production
+## Going live (Postgres backend)
+
+### 1. Provision Postgres
+
+Pick one — all have generous free tiers:
+
+- **[Neon](https://neon.tech)** — recommended; one-click Vercel integration auto-fills `DATABASE_URL`.
+- **[Supabase](https://supabase.com)** — Postgres + auth + storage in one platform.
+- **[Vercel Postgres](https://vercel.com/storage/postgres)** — first-party, simplest billing.
+
+### 2. Set environment variables
+
+Locally: copy `.env.example` to `.env` and fill in. On Vercel: **Project → Settings → Environment Variables**, add for **Production** and **Preview**:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXT_PUBLIC_HAS_BACKEND` | yes | `1` to switch to API mode |
+| `DATABASE_URL` | yes | From your Postgres provider |
+| `JWT_SECRET` | yes | ≥ 32 random chars |
+| `VOTER_ID_PEPPER` | yes | ≥ 16 random chars |
+| `ADMIN_USERNAME` | seed only | Used by `db:seed` to create the first admin |
+| `ADMIN_PASSWORD` | seed only | Strong password before going live |
+| `ADMIN_DISPLAY_NAME` | seed only | Optional |
+
+### 3. Apply the schema
 
 ```bash
-npm run build
-npm start
+# Local first run
+npm run db:push          # quick sync (dev) — or:
+npx prisma migrate dev   # creates a versioned migration
+
+# Then seed the first admin + sample topics
+npm run db:seed
 ```
 
-Or deploy to Vercel — no environment variables required.
+For Vercel, run the same `npx prisma migrate deploy` and `npx prisma db seed` once against the prod `DATABASE_URL` (e.g. via `vercel env pull` then run locally, or as a one-off script).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FOWNER%2FREPO)
+### 4. Deploy
 
-Update `OWNER/REPO` after you push the repo.
+Push to `main`. Vercel rebuilds. Visit the site:
+
+- Public app: `/`
+- Admin login: `/admin` — credentials from `ADMIN_USERNAME` / `ADMIN_PASSWORD`
 
 ---
 
-## Push to GitHub
+## Architecture
 
-```bash
-git add -A
-git commit -m "Frontend demo of TMT Votes"
-git branch -M main
-git remote add origin https://github.com/<YOUR_USER>/<YOUR_REPO>.git
-git push -u origin main
 ```
+src/
+  app/
+    page.tsx                # public home
+    vote/page.tsx           # /vote?id=...
+    admin/page.tsx          # login → dashboard
+    api/
+      topics/               # GET (public)
+      vote/                 # POST, deduped by topic+identifier hash
+      auth/login|logout|me  # bcrypt + JWT cookie
+      admin/topics/         # CRUD (admin-only)
+  components/
+    topics-store.tsx        # mode-switching client store (localStorage ↔ API)
+    nav.tsx, footer.tsx, ...
+  lib/
+    prisma.ts, jwt.ts, voter-hash.ts, validation.ts,
+    topics-service.ts, rate-limit.ts, request-utils.ts
+  middleware.ts             # cookie sniff for /admin/*
+prisma/
+  schema.prisma             # Admin / Topic / Option / Vote
+  seed.ts                   # first admin + sample topics
+```
+
+Voter dedup: server hashes `email|phone` with a peppered SHA-256 and enforces `UNIQUE(topicId, identifierHash)`. No raw identifier stored.
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Local dev |
+| `npm run build` | `prisma generate` + `next build` |
+| `npm run start` | Run the built app |
+| `npm run lint` | ESLint |
+| `npm run db:push` | Sync `schema.prisma` to the DB without migrations |
+| `npm run db:migrate` | Create a new migration (interactive) |
+| `npm run db:deploy` | Apply pending migrations (CI / prod) |
+| `npm run db:seed` | Create first admin + sample topics |
+| `npm run db:studio` | Prisma Studio (browse data) |
 
 ---
 

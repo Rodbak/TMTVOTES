@@ -13,11 +13,20 @@ const PALETTE = [
   "from-rose-500 to-red-500",
 ];
 
+function paletteIndex(id: number | string, mod: number): number {
+  if (typeof id === "number") return ((id % mod) + mod) % mod;
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    h = (h * 31 + id.charCodeAt(i)) | 0;
+  }
+  return ((h % mod) + mod) % mod;
+}
+
 export function TopicCard({ topic }: { topic: Topic }) {
   const closed = topic.status === "closed";
   const total = topic.votes.reduce((a, b) => a + b, 0);
   const initial = topic.title.trim().charAt(0).toUpperCase() || "T";
-  const palette = PALETTE[topic.id % PALETTE.length];
+  const palette = PALETTE[paletteIndex(topic.id, PALETTE.length)];
 
   const leadingIndex = topic.votes.reduce(
     (acc, v, i, arr) => (v > (arr[acc] ?? -1) ? i : acc),

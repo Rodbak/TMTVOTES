@@ -12,13 +12,16 @@ import {
 export type TopicStatus = "active" | "closed";
 
 export type Topic = {
-  id: number;
+  id: number | string;
   title: string;
   desc: string;
   options: string[];
+  optionIds?: string[];
   votes: number[];
   status: TopicStatus;
 };
+
+const HAS_BACKEND = process.env.NEXT_PUBLIC_HAS_BACKEND === "1";
 
 const SEED_TOPICS: Topic[] = [
   {
@@ -55,17 +58,29 @@ const SEED_TOPICS: Topic[] = [
   },
 ];
 
+type VoteOutcome =
+  | { ok: true }
+  | { ok: false; error: "already_voted" | "voting_closed" | "network" | "validation"; message?: string };
+
 type Ctx = {
   topics: Topic[];
-  voted: Record<number, true>;
+  voted: Record<string, true>;
   loggedIn: boolean;
-  vote: (topicId: number, optionIndex: number) => void;
-  hasVoted: (topicId: number) => boolean;
-  toggleStatus: (topicId: number) => void;
-  removeTopic: (topicId: number) => void;
-  createTopic: (title: string, desc: string, options: string[]) => number;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  hasBackend: boolean;
+  ready: boolean;
+  refresh: () => Promise<void>;
+  vote: (
+    topicId: Topic["id"],
+    optionIndex: number,
+    identifier: string,
+    identifierType: "EMAIL" | "PHONE",
+  ) => Promise<VoteOutcome>;
+  hasVoted: (topicId: Topic["id"]) => boolean;
+  toggleStatus: (topicId: Topic["id"]) => Promise<void>;
+  removeTopic: (topicId: Topic["id"]) => Promise<void>;
+  createTopic: (title: string, desc: string, options: string[]) => Promise<Topic["id"] | null>;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 };
 
 const TopicsCtx = createContext<Ctx | null>(null);
@@ -94,64 +109,202 @@ function saveJSON(key: string, value: unknown) {
   }
 }
 
+type ApiTopic = {
+  id: string;
+  title: string;
+  desc: string;
+  status: "active" | "closed" | "draft";
+  options: { id: string; label: string; voteCount: number }[];
+};
+
+function fromApi(t: ApiTopic): Topic | null {
+  if (t.status === "draft") return null;
+  return {
+    id: t.id,
+    title: t.title,
+    desc: t.desc,
+    options: t.options.map((o) => o.label),
+    optionIds: t.options.map((o) => o.id),
+    votes: t.options.map((o) => o.voteCount),
+    status: t.status,
+  };
+}
+
 export function TopicsProvider({ children }: { children: React.ReactNode }) {
   const [topics, setTopics] = useState<Topic[]>(SEED_TOPICS);
-  const [voted, setVoted] = useState<Record<number, true>>({});
+  const [voted, setVoted] = useState<Record<string, true>>({});
   const [nextId, setNextId] = useState<number>(SEED_TOPICS.length + 1);
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const [hydrated, setHydrated] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    setTopics(loadJSON<Topic[]>(KEY_TOPICS, SEED_TOPICS));
-    setVoted(loadJSON<Record<number, true>>(KEY_VOTED, {}));
-    setNextId(loadJSON<number>(KEY_NID, SEED_TOPICS.length + 1));
-    setLoggedIn(loadJSON<boolean>(KEY_LOGIN, false));
-    setHydrated(true);
+  const refresh = useCallback(async () => {
+    if (!HAS_BACKEND) return;
+    try {
+      const res = await fetch("/api/topics", { cache: "no-store" });
+      if (!res.ok) throw new Error(`status_${res.status}`);
+      const data = (await res.json()) as { topics: ApiTopic[] };
+      const list = data.topics.map(fromApi).filter(Boolean) as Topic[];
+      setTopics(list);
+    } catch (e) {
+      console.error("topics refresh failed", e);
+    }
   }, []);
 
   useEffect(() => {
-    if (hydrated) saveJSON(KEY_TOPICS, topics);
-  }, [topics, hydrated]);
+    let cancelled = false;
+    (async () => {
+      if (HAS_BACKEND) {
+        await refresh();
+        try {
+          const res = await fetch("/api/auth/me", { cache: "no-store" });
+          const data = (await res.json()) as { admin: unknown };
+          if (!cancelled) setLoggedIn(Boolean(data.admin));
+        } catch {
+          /* ignore */
+        }
+      } else {
+        setTopics(loadJSON<Topic[]>(KEY_TOPICS, SEED_TOPICS));
+        setVoted(loadJSON<Record<string, true>>(KEY_VOTED, {}));
+        setNextId(loadJSON<number>(KEY_NID, SEED_TOPICS.length + 1));
+        setLoggedIn(loadJSON<boolean>(KEY_LOGIN, false));
+      }
+      if (!cancelled) setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh]);
+
   useEffect(() => {
-    if (hydrated) saveJSON(KEY_VOTED, voted);
-  }, [voted, hydrated]);
+    if (!HAS_BACKEND && ready) saveJSON(KEY_TOPICS, topics);
+  }, [topics, ready]);
   useEffect(() => {
-    if (hydrated) saveJSON(KEY_NID, nextId);
-  }, [nextId, hydrated]);
+    if (!HAS_BACKEND && ready) saveJSON(KEY_VOTED, voted);
+  }, [voted, ready]);
   useEffect(() => {
-    if (hydrated) saveJSON(KEY_LOGIN, loggedIn);
-  }, [loggedIn, hydrated]);
+    if (!HAS_BACKEND && ready) saveJSON(KEY_NID, nextId);
+  }, [nextId, ready]);
+  useEffect(() => {
+    if (!HAS_BACKEND && ready) saveJSON(KEY_LOGIN, loggedIn);
+  }, [loggedIn, ready]);
 
-  const vote = useCallback((topicId: number, optionIndex: number) => {
-    setTopics((prev) =>
-      prev.map((t) => {
-        if (t.id !== topicId) return t;
-        const next = [...t.votes];
-        next[optionIndex] = (next[optionIndex] ?? 0) + 1;
-        return { ...t, votes: next };
-      }),
-    );
-    setVoted((prev) => ({ ...prev, [topicId]: true }));
-  }, []);
+  const hasVoted = useCallback(
+    (topicId: Topic["id"]) => Boolean(voted[String(topicId)]),
+    [voted],
+  );
 
-  const hasVoted = useCallback((topicId: number) => Boolean(voted[topicId]), [voted]);
+  const vote = useCallback(
+    async (
+      topicId: Topic["id"],
+      optionIndex: number,
+      identifier: string,
+      identifierType: "EMAIL" | "PHONE",
+    ): Promise<VoteOutcome> => {
+      if (HAS_BACKEND) {
+        const topic = topics.find((t) => t.id === topicId);
+        const optionId = topic?.optionIds?.[optionIndex];
+        if (!topic || !optionId) {
+          return { ok: false, error: "validation" };
+        }
+        try {
+          const res = await fetch("/api/vote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topicId,
+              optionId,
+              identifier,
+              identifierType,
+            }),
+          });
+          if (res.status === 409) {
+            setVoted((prev) => ({ ...prev, [String(topicId)]: true }));
+            return { ok: false, error: "already_voted" };
+          }
+          if (res.status === 400) {
+            const data = await res.json().catch(() => ({}));
+            return {
+              ok: false,
+              error: data?.error === "voting_closed" ? "voting_closed" : "validation",
+              message: data?.message,
+            };
+          }
+          if (!res.ok) {
+            return { ok: false, error: "network" };
+          }
+          setVoted((prev) => ({ ...prev, [String(topicId)]: true }));
+          await refresh();
+          return { ok: true };
+        } catch {
+          return { ok: false, error: "network" };
+        }
+      }
 
-  const toggleStatus = useCallback((topicId: number) => {
-    setTopics((prev) =>
-      prev.map((t) =>
-        t.id === topicId
-          ? { ...t, status: t.status === "active" ? "closed" : "active" }
-          : t,
-      ),
-    );
-  }, []);
+      setTopics((prev) =>
+        prev.map((t) => {
+          if (t.id !== topicId) return t;
+          const next = [...t.votes];
+          next[optionIndex] = (next[optionIndex] ?? 0) + 1;
+          return { ...t, votes: next };
+        }),
+      );
+      setVoted((prev) => ({ ...prev, [String(topicId)]: true }));
+      return { ok: true };
+    },
+    [topics, refresh],
+  );
 
-  const removeTopic = useCallback((topicId: number) => {
-    setTopics((prev) => prev.filter((t) => t.id !== topicId));
-  }, []);
+  const toggleStatus = useCallback(
+    async (topicId: Topic["id"]) => {
+      if (HAS_BACKEND) {
+        await fetch(`/api/admin/topics/${topicId}/toggle`, { method: "POST" });
+        await refresh();
+        return;
+      }
+      setTopics((prev) =>
+        prev.map((t) =>
+          t.id === topicId
+            ? {
+                ...t,
+                status: t.status === "active" ? "closed" : "active",
+              }
+            : t,
+        ),
+      );
+    },
+    [refresh],
+  );
+
+  const removeTopic = useCallback(
+    async (topicId: Topic["id"]) => {
+      if (HAS_BACKEND) {
+        await fetch(`/api/admin/topics/${topicId}`, { method: "DELETE" });
+        await refresh();
+        return;
+      }
+      setTopics((prev) => prev.filter((t) => t.id !== topicId));
+    },
+    [refresh],
+  );
 
   const createTopic = useCallback(
-    (title: string, desc: string, options: string[]) => {
+    async (
+      title: string,
+      desc: string,
+      options: string[],
+    ): Promise<Topic["id"] | null> => {
+      if (HAS_BACKEND) {
+        const res = await fetch("/api/admin/topics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, description: desc, options }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        await refresh();
+        return data?.topic?.id ?? null;
+      }
+
       const id = nextId;
       setTopics((prev) => [
         ...prev,
@@ -167,22 +320,51 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
       setNextId((n) => n + 1);
       return id;
     },
-    [nextId],
+    [nextId, refresh],
   );
 
-  const login = useCallback((username: string, password: string) => {
-    const ok = username === "admin" && password === "tmt2024";
-    setLoggedIn(ok);
-    return ok;
-  }, []);
+  const login = useCallback(
+    async (username: string, password: string) => {
+      if (HAS_BACKEND) {
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+          if (!res.ok) return false;
+          setLoggedIn(true);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      const ok = username === "admin" && password === "tmt2024";
+      setLoggedIn(ok);
+      return ok;
+    },
+    [],
+  );
 
-  const logout = useCallback(() => setLoggedIn(false), []);
+  const logout = useCallback(async () => {
+    if (HAS_BACKEND) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        /* ignore */
+      }
+    }
+    setLoggedIn(false);
+  }, []);
 
   const value = useMemo<Ctx>(
     () => ({
       topics,
       voted,
       loggedIn,
+      hasBackend: HAS_BACKEND,
+      ready,
+      refresh,
       vote,
       hasVoted,
       toggleStatus,
@@ -195,6 +377,8 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
       topics,
       voted,
       loggedIn,
+      ready,
+      refresh,
       vote,
       hasVoted,
       toggleStatus,

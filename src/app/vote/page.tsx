@@ -37,6 +37,7 @@ function VotePageInner() {
   const [showResults, setShowResults] = useState(false);
   const [justVoted, setJustVoted] = useState(false);
   const [confetti, setConfetti] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!topic) return;
@@ -83,7 +84,7 @@ function VotePageInner() {
     return 3;
   })();
 
-  function castVote() {
+  async function castVote() {
     if (!topic) return;
     if (selected === null) {
       setError("Please select an option first.");
@@ -107,7 +108,26 @@ function VotePageInner() {
       setShowResults(true);
       return;
     }
-    vote(topic.id, selected);
+    setSubmitting(true);
+    const outcome = await vote(topic.id, selected, value, idType.toUpperCase() as "EMAIL" | "PHONE");
+    setSubmitting(false);
+    if (!outcome.ok) {
+      if (outcome.error === "already_voted") {
+        setShowResults(true);
+        return;
+      }
+      if (outcome.error === "voting_closed") {
+        setShowResults(true);
+        return;
+      }
+      setError(
+        outcome.message ||
+          (outcome.error === "network"
+            ? "Network error — try again."
+            : "Could not record your vote."),
+      );
+      return;
+    }
     setJustVoted(true);
     setShowResults(true);
     setConfetti(true);
@@ -159,6 +179,7 @@ function VotePageInner() {
             onIdentifier={setIdentifier}
             error={error}
             onCast={castVote}
+            submitting={submitting}
           />
         ) : (
           <ResultsView
@@ -176,9 +197,9 @@ function VotePageInner() {
             type="button"
             onClick={castVote}
             className="w-full rounded-xl bg-primary py-3 text-[15px] font-bold text-white transition hover:bg-primary-dark disabled:opacity-50"
-            disabled={selected === null || !identifier.trim()}
+            disabled={selected === null || !identifier.trim() || submitting}
           >
-            Cast My Vote
+            {submitting ? "Casting…" : "Cast My Vote"}
           </button>
         </div>
       ) : null}
@@ -253,6 +274,7 @@ function VoteForm({
   onIdentifier,
   error,
   onCast,
+  submitting,
 }: {
   options: string[];
   votes: number[];
@@ -265,6 +287,7 @@ function VoteForm({
   onIdentifier: (v: string) => void;
   error: string;
   onCast: () => void;
+  submitting: boolean;
 }) {
   return (
     <div className="mt-5">
@@ -336,9 +359,10 @@ function VoteForm({
       <button
         type="button"
         onClick={onCast}
-        className="hidden w-full rounded-xl bg-primary py-3 text-[15px] font-bold text-white transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-cardHover sm:block"
+        disabled={submitting}
+        className="hidden w-full rounded-xl bg-primary py-3 text-[15px] font-bold text-white transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-cardHover disabled:opacity-50 sm:block"
       >
-        Cast My Vote
+        {submitting ? "Casting…" : "Cast My Vote"}
       </button>
     </div>
   );

@@ -18,14 +18,23 @@ export default function AdminPage() {
 }
 
 function Login() {
-  const { login } = useTopics();
+  const { login, hasBackend } = useTopics();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit() {
-    if (!login(username, password)) {
-      setError("Incorrect credentials. Try: admin / tmt2024");
+  async function submit() {
+    if (submitting) return;
+    setSubmitting(true);
+    const ok = await login(username, password);
+    setSubmitting(false);
+    if (!ok) {
+      setError(
+        hasBackend
+          ? "Incorrect credentials."
+          : "Incorrect credentials. Try: admin / tmt2024",
+      );
       return;
     }
     setError("");
@@ -73,14 +82,17 @@ function Login() {
       <button
         type="button"
         onClick={submit}
-        className="mt-2 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-white transition hover:bg-primary-dark"
+        disabled={submitting}
+        className="mt-2 w-full rounded-xl bg-primary py-3 text-[14px] font-bold text-white transition hover:bg-primary-dark disabled:opacity-50"
       >
-        Login to dashboard
+        {submitting ? "Signing in…" : "Login to dashboard"}
       </button>
 
-      <p className="mt-3 text-center text-[11px] text-ink-soft">
-        Demo: admin / tmt2024
-      </p>
+      {hasBackend ? null : (
+        <p className="mt-3 text-center text-[11px] text-ink-soft">
+          Demo: admin / tmt2024
+        </p>
+      )}
     </div>
   );
 }
@@ -111,7 +123,7 @@ function Dashboard() {
     "all",
   );
   const [pendingDelete, setPendingDelete] = useState<{
-    id: number;
+    id: number | string;
     title: string;
   } | null>(null);
 
