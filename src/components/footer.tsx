@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandGlyph } from "./brand-glyph";
 
 export function Footer() {
+  const year = new Date().getFullYear();
   return (
     <footer className="mt-16 border-t border-line bg-white">
       <div className="mx-auto flex max-w-[860px] flex-col items-center gap-3 px-6 py-8 text-center sm:flex-row sm:justify-between sm:text-left">
@@ -21,8 +22,14 @@ export function Footer() {
           <Link href="/admin" className="hover:text-primary">
             Admin
           </Link>
-          <span>© {new Date().getFullYear()} · Demo build</span>
+          <span>© {year}</span>
         </div>
+      </div>
+      <div className="border-t border-line bg-bg2/60">
+        <p className="mx-auto max-w-[860px] px-6 py-3 text-center text-[11px] text-ink-soft">
+          Built by{" "}
+          <span className="font-semibold text-primary">StrategyLab</span>
+        </p>
       </div>
     </footer>
   );
